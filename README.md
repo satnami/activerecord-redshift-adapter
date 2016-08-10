@@ -10,7 +10,8 @@ Usage
 
 Write following in Gemfile:
 ```
-gem 'activerecord-redshift-adapter'
+gem 'activerecord-redshift-adapter', git: "git://github.com/LoyaltyNZ/activerecord-redshift-adapter.git"
+
 ```
 
 In database.yml
