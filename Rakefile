@@ -21,7 +21,7 @@ end
 
 ### Gem Handling
 
-spec = eval(File.read('activerecord4-redshift-adapter.gemspec'))
+spec = eval(File.read('activerecord-redshift-adapter.gemspec'))
 
 desc 'Make gem'
 Gem::PackageTask.new(spec) do |t|
