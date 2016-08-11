@@ -1,9 +1,13 @@
 module ActiveRecord
   module ConnectionAdapters
     class RedshiftColumn < Column #:nodoc:
-      def initialize(name, default, cast_type, sql_type = nil, null = true, default_function = nil)
-        super name, default, cast_type, sql_type, null
-        @default_function = default_function
+      delegate :array, :oid, :fmod, to: :sql_type_metadata
+      alias :array? :array
+
+      def serial?
+        return unless default_function
+
+        %r{\Anextval\('"?#{table_name}_#{name}_seq"?'::regclass\)\z} === default_function
       end
     end
   end

@@ -143,18 +143,20 @@ module ActiveRecord
         end
 
         # Returns the list of all column definitions for a table.
-        def columns(table_name)
-          # Limit, precision, and scale are all handled by the superclass.
-          column_definitions(table_name).map do |column_name, type, default, notnull, oid, fmod|
-            oid = get_oid_type(oid.to_i, fmod.to_i, column_name, type)
-            default_value = extract_value_from_default(oid, default)
+        def columns(table_name) # :nodoc:
+          table_name = table_name.to_s
+          column_definitions(table_name).map do |column_name, type, default, notnull, oid, fmod, collation, comment|
+            oid = oid.to_i
+            fmod = fmod.to_i
+            type_metadata = fetch_type_metadata(column_name, type, oid, fmod)
+            default_value = extract_value_from_default(default)
             default_function = extract_default_function(default_value, default)
-            new_column(column_name, default_value, oid, type, notnull == 'f', default_function)
+            new_column(column_name, default_value, type_metadata, !notnull, table_name, default_function, collation, comment: comment.presence)
           end
         end
 
-        def new_column(name, default, cast_type, sql_type = nil, null = true, default_function = nil) # :nodoc:
-          RedshiftColumn.new(name, default, cast_type, sql_type, null, default_function)
+        def new_column(*args) # :nodoc:
+          RedshiftColumn.new(*args)
         end
 
         # Returns the current database name.
@@ -410,6 +412,18 @@ module ActiveRecord
             }.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }
 
           [super, *order_columns].join(', ')
+        end
+
+        def fetch_type_metadata(column_name, sql_type, oid, fmod)
+          cast_type = get_oid_type(oid, fmod, column_name, sql_type)
+          simple_type = SqlTypeMetadata.new(
+            sql_type: sql_type,
+            type: cast_type.type,
+            limit: cast_type.limit,
+            precision: cast_type.precision,
+            scale: cast_type.scale,
+          )
+          RedshiftTypeMetadata.new(simple_type, oid: oid, fmod: fmod)
         end
       end
     end

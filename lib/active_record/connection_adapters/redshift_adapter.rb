@@ -8,6 +8,7 @@ require 'active_record/connection_adapters/redshift/quoting'
 require 'active_record/connection_adapters/redshift/referential_integrity'
 require 'active_record/connection_adapters/redshift/schema_definitions'
 require 'active_record/connection_adapters/redshift/schema_statements'
+require 'active_record/connection_adapters/redshift/type_metadata'
 require 'active_record/connection_adapters/redshift/database_statements'
 
 require 'arel/visitors/bind_visitor'
@@ -440,17 +441,22 @@ module ActiveRecord
           end
         end
 
-        # Extracts the value from a PostgreSQL column default definition.
-        def extract_value_from_default(oid, default) # :nodoc:
+        # Extracts the value from a Redshift column default definition.
+        def extract_value_from_default(default) # :nodoc:
           case default
             # Quoted types
-            when /\A[\(B]?'(.*)'::/m
-              $1.gsub(/''/, "'")
+            when /\A[\(B]?'(.*)'.*::"?([\w. ]+)"?(?:\[\])?\z/m
+              # The default 'now'::date is CURRENT_DATE
+              if $1 == "now".freeze && $2 == "date".freeze
+                nil
+              else
+                $1.gsub("''".freeze, "'".freeze)
+              end
             # Boolean types
-            when 'true', 'false'
+            when 'true'.freeze, 'false'.freeze
               default
             # Numeric types
-            when /\A\(?(-?\d+(\.\d*)?)\)?\z/
+            when /\A\(?(-?\d+(\.\d*)?)\)?(::bigint)?\z/
               $1
             # Object identifier types
             when /\A-?\d+\z/
